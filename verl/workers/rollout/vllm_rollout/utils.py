@@ -118,7 +118,10 @@ def monkey_patch_compute_logits(model, vocab_size: int, banned_token_ids: Option
         logits = original_compute_logits(*args, **kwargs)
         logits[..., vocab_size:] = float("-inf")
         if banned_token_ids:
-            logits[..., banned_token_ids] = float("-inf")
+            banned_token_ids_tensor = (
+                torch.tensor(banned_token_ids, dtype=torch.long).pin_memory().to(logits.device, non_blocking=True)
+            )
+            logits.index_fill_(-1, banned_token_ids_tensor, float("-inf"))
         return logits
 
     model.compute_logits = MethodType(compute_logits, model)
